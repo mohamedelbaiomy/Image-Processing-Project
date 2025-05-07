@@ -11,7 +11,7 @@ class FrequencyDomainEnhancement:
     """
 
     def __init__(self):
-        self.filters = FrequencyDomainFilters()
+        self.filters = FrequencyDomainFilters()  # Initialize filters here
 
     def enhance(self, image, params=None):
         """
@@ -27,20 +27,19 @@ class FrequencyDomainEnhancement:
         if params is None:
             params = self.get_default_params()
 
-        # Convert to grayscale if needed
+        # Convert to grayscale if needed and ensure proper type
         if len(image.shape) > 2:
             image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-        # Get filter parameters
-        filter_type = params.get('filter_type', 'lowpass')
-        filter_class = params.get('filter_class', 'butterworth')
-        cutoff = params.get('cutoff', 30)
-        order = params.get('order', 2)
-        band_width = params.get('band_width', 10)
+        image = image.astype(np.float32) / 255.0  # Normalize to [0,1]
 
         # Apply selected filter
         result = self.filters.apply_filter(
-            image, filter_type, filter_class, cutoff, order, band_width
+            image,
+            params.get('filter_type', 'lowpass'),
+            params.get('filter_class', 'butterworth'),
+            params.get('cutoff', 30),
+            params.get('order', 2),
+            params.get('band_width', 10)
         )
 
         # Post-processing
@@ -50,13 +49,14 @@ class FrequencyDomainEnhancement:
         if params.get('sharpen', False):
             result = self._apply_sharpening(result)
 
-        return result
+        # Convert back to 8-bit
+        return (result * 255).astype(np.uint8)
 
     def _apply_sharpening(self, image):
         """Apply mild sharpening to enhance filtered results"""
         kernel = np.array([[-1, -1, -1],
-                           [-1, 9, -1],
-                           [-1, -1, -1]])
+                          [-1,  9, -1],
+                          [-1, -1, -1]])
         return cv2.filter2D(image, -1, kernel)
 
     def get_default_params(self):

@@ -6,7 +6,7 @@ from utils.image_utils import normalize_image
 
 def compute_fft(image):
     """
-    Compute the 2D Fourier Transform of an image.
+    Compute the 2D Fourier Transform of an image with proper scaling.
 
     Args:
         image: Input image (grayscale)
@@ -14,8 +14,8 @@ def compute_fft(image):
     Returns:
         Tuple of (magnitude_spectrum, phase_spectrum, fft_shifted)
     """
-    # Convert to float32 for processing
-    float_img = image.astype(np.float32)
+    # Convert to float32 and normalize to [0,1]
+    float_img = image.astype(np.float32) / 255.0
 
     # Apply 2D DFT
     dft = cv2.dft(float_img, flags=cv2.DFT_COMPLEX_OUTPUT)
@@ -26,41 +26,25 @@ def compute_fft(image):
     # Compute magnitude and phase spectra
     magnitude, phase = cv2.cartToPolar(dft_shifted[:, :, 0], dft_shifted[:, :, 1])
 
-    # Log scale for better visualization
-    magnitude_spectrum = 20 * np.log(magnitude + 1)
+    # Log scale for visualization
+    magnitude_spectrum = 20 * np.log(magnitude + 1e-5)  # Add small value to avoid log(0)
 
     return magnitude_spectrum, phase, dft_shifted
 
 
 class FourierTransformer:
-    """Handles Fourier Transform operations for image processing"""
-
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def compute_fft(image):
-        """
-        Compute the 2D Fourier Transform of an image.
-
-        Args:
-            image: Input image (grayscale)
-
-        Returns:
-            Tuple of (magnitude_spectrum, phase_spectrum, fft_shifted)
-        """
-        return compute_fft(image)
+    """Handles Fourier Transform operations with proper scaling"""
 
     @staticmethod
     def compute_ifft(fft_shifted):
         """
-        Compute inverse Fourier Transform.
+        Compute inverse Fourier Transform with proper scaling.
 
         Args:
             fft_shifted: Shifted FFT coefficients
 
         Returns:
-            Reconstructed image
+            Reconstructed image in uint8 format
         """
         # Unshift the frequencies
         fft_unshifted = np.fft.ifftshift(fft_shifted)
@@ -69,9 +53,11 @@ class FourierTransformer:
         img_back = cv2.idft(fft_unshifted)
         img_back = cv2.magnitude(img_back[:, :, 0], img_back[:, :, 1])
 
-        # Normalize to [0, 255]
-        return normalize_image(img_back)
+        # Normalize and convert to uint8
+        img_back = cv2.normalize(img_back, None, 0, 255, cv2.NORM_MINMAX)
+        return img_back.astype(np.uint8)
 
+    # ... rest of the class remains the same ...
     def create_filter_mask(self, shape, filter_type='lowpass', filter_class='ideal',
                            cutoff=30, order=2, band_width=10):
         """
