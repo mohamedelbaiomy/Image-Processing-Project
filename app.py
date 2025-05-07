@@ -2,6 +2,8 @@ import os
 import cv2
 import threading
 import time
+
+import numpy as np
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from matplotlib import pyplot as plt
 from werkzeug.utils import secure_filename
@@ -126,70 +128,66 @@ def process_enhancement_task(task_id, filename, params):
         return
 
     try:
-        # Initialize task with empty result
+        # Initialize task with default values
         task.update({
             'status': 'processing',
             'progress': 0,
             'result_filename': None,
-            'error': None
+            'error': None,
+            'last_update': time.time()
         })
 
-        # Step 1: Load image (20% progress)
+        # Step 1: Load and validate source image (20% progress)
         task['progress'] = 20
         image_path = os.path.join(UPLOAD_FOLDER, filename)
+
         if not os.path.exists(image_path):
             raise FileNotFoundError(f"Source image not found at {image_path}")
 
-        image = load_image(image_path)
+        image = cv2.imread(image_path, cv2.IMREAD_UNCHANGED)
         if image is None:
-            raise ValueError("Image loading failed - invalid file content")
+            raise ValueError("Failed to decode image - possibly corrupt file")
+        if image.size == 0:
+            raise ValueError("Loaded image is empty")
 
         # Step 2: Apply enhancement (50% progress)
         task['progress'] = 50
         enhanced = enhancer.enhance(image, params)
-        if enhanced is None:
-            raise ValueError("Enhancement process returned null result")
 
-        # Step 3: Save result (80% progress)
+        if enhanced is None:
+            raise ValueError("Enhancement returned null result")
+        if enhanced.size == 0:
+            raise ValueError("Enhanced image is empty")
+
+        # Convert to uint8 if needed
+        if enhanced.dtype != np.uint8:
+            enhanced = cv2.normalize(enhanced, None, 0, 255, cv2.NORM_MINMAX, dtype=cv2.CV_8U)
+
+        # Step 3: Save result with verification (80% progress)
         task['progress'] = 80
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
         result_filename = f"enhanced_{timestamp}_{secure_filename(filename)}"
         result_path = os.path.join(RESULT_FOLDER, result_filename)
 
-        # Ensure directory exists
+        # Ensure the directory exists
         os.makedirs(RESULT_FOLDER, exist_ok=True)
 
-        # Save with verification
+        # Save with explicit format and verification
         if not cv2.imwrite(result_path, enhanced):
             raise IOError("Failed to write enhanced image to disk")
 
-        # Verify the file was actually created
-        if not os.path.exists(result_path):
-            raise IOError("Enhanced image file not found after saving")
-        if os.path.getsize(result_path) == 0:
+        # Verify the saved image
+        saved_img = cv2.imread(result_path)
+        if saved_img is None or saved_img.size == 0:
             os.remove(result_path)
-            raise IOError("Enhanced image file is empty")
+            raise IOError("Saved image verification failed - possibly corrupt")
 
-        # Step 4: Create visualization (90% progress)
-        task['progress'] = 90
-        vis_filename = f"vis_{timestamp}_{secure_filename(filename).replace('.', '_')}.png"
-        vis_path = os.path.join(VISUALIZATION_FOLDER, vis_filename)
-
-        try:
-            create_visualization(image, enhanced, params, vis_path)
-            if not os.path.exists(vis_path):
-                raise IOError("Visualization file not created")
-        except Exception as e:
-            print(f"Visualization failed (non-critical): {str(e)}")
-            vis_filename = None
-
-        # Finalize task only after all operations succeed
+        # Step 4: Finalize task (100% progress)
         task.update({
             'status': 'completed',
             'progress': 100,
             'result_filename': result_filename,
-            'vis_filename': vis_filename,
-            'history_id': history_manager.add_entry(filename, result_filename, params)
+            'last_update': time.time()
         })
 
     except Exception as e:
@@ -197,15 +195,9 @@ def process_enhancement_task(task_id, filename, params):
             'status': 'failed',
             'error': str(e),
             'progress': 100,
-            'result_filename': None
+            'last_update': time.time()
         })
-        # Clean up any partial files
-        if 'result_filename' in task and task['result_filename']:
-            try:
-                os.remove(os.path.join(RESULT_FOLDER, task['result_filename']))
-            except:
-                pass
-
+        print(f"Task {task_id} failed: {str(e)}")
 def create_visualization(original, enhanced, params, output_path):
     if len(original.shape) > 2:
         original = cv2.cvtColor(original, cv2.COLOR_BGR2GRAY)
@@ -230,47 +222,45 @@ def create_visualization(original, enhanced, params, output_path):
 
 
 @app.route('/task/<task_id>', methods=['GET'])
-@app.route('/task/<task_id>', methods=['GET'])
 def get_task_status(task_id):
     task = processing_tasks.get(task_id)
     if not task:
         return jsonify(success=False, error='Task not found'), 404
 
+    # Check for stale tasks (older than 30 minutes)
+    if time.time() - task.get('last_update', 0) > 1800:
+        task['status'] = 'failed'
+        task['error'] = 'Task timed out'
+
     response = {
         'success': True,
         'status': task['status'],
-        'progress': task['progress']
+        'progress': task['progress'],
+        'last_update': task.get('last_update')
     }
 
     if task['status'] == 'completed':
-        if not task.get('result_filename'):
-            return jsonify(
-                success=False,
-                error='Internal server error: Task marked complete but no result',
-                status='failed'
-            ), 500
-
-        # Verify the result file exists
+        # Verify the result file exists and is valid
         result_path = os.path.join(RESULT_FOLDER, task['result_filename'])
-        if not os.path.exists(result_path):
+        try:
+            img = cv2.imread(result_path)
+            if img is None or img.size == 0:
+                raise ValueError("Result image is invalid")
+        except Exception as e:
             task['status'] = 'failed'
-            task['error'] = 'Result file missing on server'
-            return jsonify(
-                success=False,
-                error=task['error'],
-                status='failed'
-            ), 500
+            task['error'] = f'Result verification failed: {str(e)}'
+            return jsonify({
+                'success': False,
+                'status': 'failed',
+                'error': task['error']
+            }), 500
 
-        response.update({
-            'result_filename': task['result_filename'],
-            'vis_filename': task.get('vis_filename'),
-            'history_id': task.get('history_id')
-        })
+        response['result_filename'] = task['result_filename']
+
     elif task['status'] == 'failed':
         response['error'] = task.get('error', 'Unknown error')
 
     return jsonify(response)
-
 
 @app.route('/history', methods=['GET'])
 def get_history():

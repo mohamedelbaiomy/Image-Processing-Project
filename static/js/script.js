@@ -250,30 +250,38 @@ function handleUpload(event) {
 
 // Fix for pollTaskStatus function
 async function pollTaskStatus(taskId) {
-    if (!taskId) {
-        showError('Invalid task ID');
-        hideLoading();
-        return;
-    }
-
-    const MAX_ATTEMPTS = 90; // 1.5 minutes max
+    const MAX_ATTEMPTS = 120; // 2 minutes max
     const RETRY_DELAY = 1000; // 1 second
     let attempts = 0;
+    let lastProgress = 0;
+
+    // Show loading state
+    showLoading('Processing image...');
+    applyBtn.disabled = true;
 
     const checkStatus = async () => {
         attempts++;
 
         try {
             const response = await fetch(`/task/${taskId}`);
-            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            if (!response.ok) throw new Error(`Server error: ${response.status}`);
 
             const data = await response.json();
 
-            if (!data.success) {
-                throw new Error(data.error || 'Task processing failed');
-            }
+            // Update progress if changed
+            if (data.progress !== lastProgress) {
+                lastProgress = data.progress;
+                updateProgress(data.progress);
 
-            updateProgress(data.progress || 0);
+                // Update loading message based on progress
+                if (data.progress < 50) {
+                    showLoading('Loading and processing image...');
+                } else if (data.progress < 80) {
+                    showLoading('Applying enhancements...');
+                } else {
+                    showLoading('Finalizing results...');
+                }
+            }
 
             // Handle completion
             if (data.status === 'completed') {
@@ -281,61 +289,98 @@ async function pollTaskStatus(taskId) {
                     throw new Error('Server completed but provided no result');
                 }
 
-                // Verify the image exists with retries
-                const imageUrl = `/static/results/${data.result_filename}`;
-                const exists = await verifyImageExists(imageUrl, 3); // 3 retries
+                // Load the enhanced image with verification
+                const imgUrl = `/static/results/${data.result_filename}?t=${Date.now()}`;
+                const img = await loadAndVerifyImage(imgUrl);
 
-                if (exists) {
-                    updateEnhancedImage(data.result_filename);
-                    if (data.history_id) addToHistory(data.history_id);
-                    showSuccess('Enhancement completed successfully!');
-                } else {
-                    throw new Error('Result image could not be loaded');
-                }
-                return true; // Done
+                // Update UI
+                enhancedImage.src = imgUrl;
+                downloadBtn.href = imgUrl;
+                downloadBtn.download = `enhanced_${currentFilename || 'image.jpg'}`;
+
+                showSuccess('Enhancement completed successfully!');
+                return true; // Success
             }
             else if (data.status === 'failed') {
                 throw new Error(data.error || 'Enhancement failed');
             }
 
-            // Continue polling
+            // Continue polling if not done
             if (attempts < MAX_ATTEMPTS) {
                 setTimeout(checkStatus, RETRY_DELAY);
             } else {
-                throw new Error('Processing timeout. Server took too long to respond.');
+                throw new Error('Processing timeout. Please try again.');
             }
         } catch (error) {
-            hideLoading();
-            showError(`Error: ${error.message}`);
-            console.error('Task polling error:', error);
-            return false; // Failed
+            showError(error.message);
+            console.error('Task error:', error);
+            return false; // Failure
+        } finally {
+            if (attempts >= MAX_ATTEMPTS ||
+                (lastProgress === 100 && !enhancedImage.src.includes('placeholder'))) {
+                hideLoading();
+                applyBtn.disabled = false;
+            }
         }
     };
 
     await checkStatus();
 }
 
-// Enhanced image verification with retries
-function verifyImageExists(url, maxRetries = 3) {
-    return new Promise((resolve) => {
+// Robust image loading with verification
+function loadAndVerifyImage(url, maxRetries = 3) {
+    return new Promise((resolve, reject) => {
         let retries = 0;
 
-        function check() {
+        function attemptLoad() {
             const img = new Image();
-            img.onload = () => resolve(true);
-            img.onerror = () => {
-                if (retries++ < maxRetries) {
-                    setTimeout(check, 1000 * retries);
+            img.onload = () => {
+                // Additional verification for black images
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0);
+
+                // Check if image is completely black
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                let allBlack = true;
+
+                for (let i = 0; i < data.length; i += 4) {
+                    if (data[i] !== 0 || data[i+1] !== 0 || data[i+2] !== 0) {
+                        allBlack = false;
+                        break;
+                    }
+                }
+
+                if (allBlack) {
+                    if (retries++ < maxRetries) {
+                        console.warn('Received black image, retrying...');
+                        setTimeout(attemptLoad, 1000 * retries);
+                    } else {
+                        reject(new Error('Enhanced image appears to be blank'));
+                    }
                 } else {
-                    resolve(false);
+                    resolve(img);
                 }
             };
+
+            img.onerror = () => {
+                if (retries++ < maxRetries) {
+                    setTimeout(attemptLoad, 1000 * retries);
+                } else {
+                    reject(new Error('Failed to load image'));
+                }
+            };
+
             img.src = url;
         }
 
-        check();
+        attemptLoad();
     });
 }
+// Enhanced image verification with retries
 
  // Fix for the updateEnhancedImage function
 function updateEnhancedImage(filename) {
