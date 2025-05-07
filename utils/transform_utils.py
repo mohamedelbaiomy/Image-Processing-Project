@@ -6,19 +6,11 @@ from utils.image_utils import normalize_image
 
 def compute_fft(image):
     """
-    Compute the 2D Fourier Transform of an image with proper scaling.
-
-    Args:
-        image: Input image (grayscale)
-
-    Returns:
-        Tuple of (magnitude_spectrum, phase_spectrum, fft_shifted)
+    Compute the 2D Fourier Transform of an image.
+    Expects float32 image in [0,1] range.
     """
-    # Convert to float32 and normalize to [0,1]
-    float_img = image.astype(np.float32) / 255.0
-
     # Apply 2D DFT
-    dft = cv2.dft(float_img, flags=cv2.DFT_COMPLEX_OUTPUT)
+    dft = cv2.dft(image, flags=cv2.DFT_COMPLEX_OUTPUT)
 
     # Shift the zero frequency component to center
     dft_shifted = np.fft.fftshift(dft)
@@ -27,7 +19,7 @@ def compute_fft(image):
     magnitude, phase = cv2.cartToPolar(dft_shifted[:, :, 0], dft_shifted[:, :, 1])
 
     # Log scale for visualization
-    magnitude_spectrum = 20 * np.log(magnitude + 1e-5)  # Add small value to avoid log(0)
+    magnitude_spectrum = 20 * np.log(magnitude + 1e-6)  # Avoid log(0)
 
     return magnitude_spectrum, phase, dft_shifted
 
@@ -38,13 +30,8 @@ class FourierTransformer:
     @staticmethod
     def compute_ifft(fft_shifted):
         """
-        Compute inverse Fourier Transform with proper scaling.
-
-        Args:
-            fft_shifted: Shifted FFT coefficients
-
-        Returns:
-            Reconstructed image in uint8 format
+        Compute inverse Fourier Transform.
+        Returns float32 image in [0,1] range.
         """
         # Unshift the frequencies
         fft_unshifted = np.fft.ifftshift(fft_shifted)
@@ -53,11 +40,9 @@ class FourierTransformer:
         img_back = cv2.idft(fft_unshifted)
         img_back = cv2.magnitude(img_back[:, :, 0], img_back[:, :, 1])
 
-        # Normalize and convert to uint8
-        img_back = cv2.normalize(img_back, None, 0, 255, cv2.NORM_MINMAX)
-        return img_back.astype(np.uint8)
+        # Normalize to [0,1]
+        return cv2.normalize(img_back, None, 0, 1, cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 
-    # ... rest of the class remains the same ...
     def create_filter_mask(self, shape, filter_type='lowpass', filter_class='ideal',
                            cutoff=30, order=2, band_width=10):
         """
