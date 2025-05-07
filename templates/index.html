@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frequency Domain Image Enhancement</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/mobile.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.png') }}" type="image/png">
+</head>
+<body>
+    <div class="container">
+        <h1>Frequency Domain Image Enhancement</h1>
+
+        <div class="main-tabs">
+            <div class="main-tab active" data-tab="enhance">Enhance</div>
+            <div class="main-tab" data-tab="history">History</div>
+            <div class="main-tab" data-tab="visualize">Visualize</div>
+        </div>
+
+        <div id="enhance-tab" class="main-tab-content active">
+            <div class="compact-header">
+                <div class="upload-section">
+                    <form id="upload-form" enctype="multipart/form-data">
+                        <div class="file-input-container">
+                            <input type="file" id="image-input" name="image" accept="image/*">
+                            <label for="image-input" class="file-input-label">Choose File</label>
+                            <span id="file-name">No file chosen</span>
+                            <button type="submit" id="upload-btn">Upload</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="preset-section">
+                    <h3>Quick Presets</h3>
+                    <div class="preset-buttons">
+                        <button class="preset-btn" data-preset="smooth" title="Applies strong smoothing for noise reduction">Smooth Image</button>
+                        <button class="preset-btn" data-preset="sharpen" title="Enhances edges and fine details">Sharpen Edges</button>
+                        <button class="preset-btn" data-preset="bandpass" title="Enhances mid-range frequencies">Bandpass Filter</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="image-container">
+                <div class="image-box">
+                    <h3>Original Image</h3>
+                    <div class="image-wrapper">
+                        <img id="original-image" src="{{ url_for('static', filename='img/placeholder.png') }}" alt="Original Image">
+                    </div>
+                </div>
+                <div class="image-box">
+                    <h3>Enhanced Image</h3>
+                    <div class="image-wrapper">
+                        <img id="enhanced-image" src="{{ url_for('static', filename='img/placeholder.png') }}" alt="Enhanced Image">
+                    </div>
+                    <div class="download-btn-container">
+                        <a id="download-btn" href="#" download="enhanced_image.jpg" class="download-btn">Download</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="parameters-section">
+                <h2>Filter Parameters</h2>
+                <div class="tabs">
+                    <div class="tab-header">
+                        <div class="tab-btn active" data-tab="filter-type">Filter Type</div>
+                        <div class="tab-btn" data-tab="filter-params">Parameters</div>
+                        <div class="tab-btn" data-tab="post-processing">Post-Processing</div>
+                    </div>
+
+                    <div class="tab-content">
+                        <div class="tab-pane active" id="filter-type-tab">
+                            <div class="filter-type-group">
+                                <div class="filter-option">
+                                    <input type="radio" id="lowpass-filter" name="filter_type" value="lowpass" checked>
+                                    <label for="lowpass-filter">Lowpass (Smoothing)</label>
+                                </div>
+                                <div class="filter-option">
+                                    <input type="radio" id="highpass-filter" name="filter_type" value="highpass">
+                                    <label for="highpass-filter">Highpass (Sharpening)</label>
+                                </div>
+                                <div class="filter-option">
+                                    <input type="radio" id="bandpass-filter" name="filter_type" value="bandpass">
+                                    <label for="bandpass-filter">Bandpass</label>
+                                </div>
+                            </div>
+
+                            <div class="filter-class-group">
+                                <h4>Filter Class:</h4>
+                                <div class="filter-option">
+                                    <input type="radio" id="ideal-filter" name="filter_class" value="ideal">
+                                    <label for="ideal-filter">Ideal</label>
+                                </div>
+                                <div class="filter-option">
+                                    <input type="radio" id="butterworth-filter" name="filter_class" value="butterworth" checked>
+                                    <label for="butterworth-filter">Butterworth</label>
+                                </div>
+                                <div class="filter-option">
+                                    <input type="radio" id="gaussian-filter" name="filter_class" value="gaussian">
+                                    <label for="gaussian-filter">Gaussian</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane" id="filter-params-tab">
+                            <div class="param-group">
+                                <label for="cutoff-frequency">Cutoff Frequency (D0):</label>
+                                <input type="range" id="cutoff-frequency" name="cutoff" min="1" max="100" step="1" value="30">
+                                <span class="param-value" id="cutoff-frequency-value">30</span>
+                            </div>
+                            <div class="param-group">
+                                <label for="filter-order">Filter Order (n):</label>
+                                <input type="range" id="filter-order" name="order" min="1" max="10" step="1" value="2">
+                                <span class="param-value" id="filter-order-value">2</span>
+                            </div>
+                            <div class="param-group" id="bandwidth-group" style="display: none;">
+                                <label for="bandwidth">Bandwidth:</label>
+                                <input type="range" id="bandwidth" name="band_width" min="1" max="50" step="1" value="10">
+                                <span class="param-value" id="bandwidth-value">10</span>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane" id="post-processing-tab">
+                            <div class="param-group">
+                                <label for="normalize">Normalize Output:</label>
+                                <input type="checkbox" id="normalize" name="normalize" checked>
+                            </div>
+                            <div class="param-group">
+                                <label for="sharpen">Apply Sharpening:</label>
+                                <input type="checkbox" id="sharpen" name="sharpen">
+                            </div>
+                            <div class="param-group">
+                                <label for="sharpen-amount">Sharpening Amount:</label>
+                                <input type="range" id="sharpen-amount" name="sharpen_amount" min="0.1" max="3" step="0.1" value="1.0" disabled>
+                                <span class="param-value" id="sharpen-amount-value">1.0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="apply-btn-container">
+                    <button id="apply-btn" disabled>Apply Filter</button>
+                    <button id="reset-btn">Reset Parameters</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Tab Content -->
+        <div id="history-tab" class="main-tab-content">
+            <div class="history-section">
+                <h2>Processing History</h2>
+                <div class="history-controls">
+                    <button id="refresh-history-btn" class="action-btn">Refresh</button>
+                    <button id="clear-history-btn" class="action-btn danger">Clear All</button>
+                </div>
+                <div class="history-list" id="history-list">
+                    <div class="history-empty">No history entries yet</div>
+                </div>
+            </div>
+
+            <div class="history-detail" id="history-detail">
+                <div class="history-detail-empty">Select a history entry to view details</div>
+                <div class="history-detail-content" style="display: none;">
+                    <h3 id="history-detail-title">Enhancement Details</h3>
+                    <div class="history-images">
+                        <div class="history-image-box">
+                            <h4>Original Image</h4>
+                            <div class="image-wrapper">
+                                <img id="history-original-image" src="" alt="Original Image">
+                            </div>
+                        </div>
+                        <div class="history-image-box">
+                            <h4>Enhanced Image</h4>
+                            <div class="image-wrapper">
+                                <img id="history-enhanced-image" src="" alt="Enhanced Image">
+                            </div>
+                            <div class="download-btn-container">
+                                <a id="history-download-btn" href="#" download class="download-btn">Download</a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="history-parameters">
+                        <h4>Parameters Used</h4>
+                        <div id="history-parameters-list" class="parameters-list">
+                            <!-- Parameters will be loaded here -->
+                        </div>
+                        <div class="history-actions">
+                            <button id="reuse-params-btn" class="action-btn">Reuse These Parameters</button>
+                            <button id="delete-history-btn" class="action-btn danger">Delete Entry</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Visualization Tab Content -->
+        <div id="visualize-tab" class="main-tab-content">
+            <div class="visualization-section">
+                <h2>Frequency Domain Visualization</h2>
+                <div class="visualization-controls">
+                    <button id="generate-vis-btn" class="action-btn" disabled>Generate Visualization</button>
+                </div>
+
+                <div class="visualization-container">
+                    <div class="visualization-box">
+                        <h3>Original Image</h3>
+                        <div class="image-wrapper">
+                            <img id="vis-original-image" src="{{ url_for('static', filename='img/placeholder.png') }}" alt="Original Image">
+                        </div>
+                    </div>
+
+                    <div class="visualization-box">
+                        <h3>Frequency Spectrum</h3>
+                        <div class="image-wrapper">
+                            <img id="spectrum-image" src="{{ url_for('static', filename='img/placeholder.png') }}" alt="Frequency Spectrum">
+                        </div>
+                    </div>
+
+                    <div class="visualization-box">
+                        <h3>Filter Mask</h3>
+                        <div class="image-wrapper">
+                            <img id="mask-image" src="{{ url_for('static', filename='img/placeholder.png') }}" alt="Filter Mask">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="visualization-params">
+                    <h3>Visualization Parameters</h3>
+                    <div class="param-group">
+                        <label for="spectrum-scale">Spectrum Scale:</label>
+                        <input type="range" id="spectrum-scale" name="spectrum_scale" min="10" max="50" step="5" value="20">
+                        <span class="param-value" id="spectrum-scale-value">20</span>
+                    </div>
+                    <div class="param-group">
+                        <label for="show-grid">Show Grid:</label>
+                        <input type="checkbox" id="show-grid" name="show_grid" checked>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay">
+        <div class="loading-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loading-text">Processing image...</div>
+            <div class="progress-container">
+                <div class="progress-bar" id="progress-bar"></div>
+            </div>
+            <div class="progress-text" id="progress-text">0%</div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
