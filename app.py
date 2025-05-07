@@ -1,16 +1,11 @@
 import os
 import cv2
-import numpy as np
-import json
-import shutil
 import threading
 import time
-import gc
 from flask import Flask, render_template, request, jsonify, send_from_directory
 from matplotlib import pyplot as plt
 from werkzeug.utils import secure_filename
 from datetime import datetime
-
 from filters.frequency_enhancement import FrequencyDomainEnhancement
 from utils.image_utils import load_image, save_image
 from utils.history_manager import HistoryManager
@@ -83,8 +78,6 @@ def upload_file():
 @app.route('/enhance', methods=['POST'])
 def enhance_image():
     try:
-        cleanup_old_files(RESULT_FOLDER, max_files=100)
-
         data = request.get_json()
         if not data:
             return jsonify(success=False, error='No JSON data received')
@@ -93,10 +86,16 @@ def enhance_image():
         if not filename:
             return jsonify(success=False, error='Filename is required')
 
+        # Validate filename to prevent path traversal
         if '..' in filename or '/' in filename or '\\' in filename:
             return jsonify(success=False, error='Invalid filename')
 
         params = data.get('params', {})
+
+        # Validate enhancement parameters
+        valid_filter_types = {'lowpass', 'highpass', 'bandpass'}
+        if params.get('filter_type') not in valid_filter_types:
+            return jsonify(success=False, error='Invalid filter type')
 
         task_id = f"task_{int(time.time() * 1000)}"
         task = {
@@ -127,35 +126,85 @@ def process_enhancement_task(task_id, filename, params):
         return
 
     try:
-        task['progress'] = 10
-        image_path = os.path.join(UPLOAD_FOLDER, filename)
-        image = load_image(image_path)
+        # Initialize task with empty result
+        task.update({
+            'status': 'processing',
+            'progress': 0,
+            'result_filename': None,
+            'error': None
+        })
+
+        # Step 1: Load image (20% progress)
         task['progress'] = 20
+        image_path = os.path.join(UPLOAD_FOLDER, filename)
+        if not os.path.exists(image_path):
+            raise FileNotFoundError(f"Source image not found at {image_path}")
 
+        image = load_image(image_path)
+        if image is None:
+            raise ValueError("Image loading failed - invalid file content")
+
+        # Step 2: Apply enhancement (50% progress)
+        task['progress'] = 50
         enhanced = enhancer.enhance(image, params)
-        task['progress'] = 70
+        if enhanced is None:
+            raise ValueError("Enhancement process returned null result")
 
+        # Step 3: Save result (80% progress)
+        task['progress'] = 80
         timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        result_filename = f"enhanced_{timestamp}_{filename}"
+        result_filename = f"enhanced_{timestamp}_{secure_filename(filename)}"
         result_path = os.path.join(RESULT_FOLDER, result_filename)
-        save_image(enhanced, result_path)
 
-        vis_filename = f"vis_{timestamp}_{filename.replace('.', '_')}.png"
+        # Ensure directory exists
+        os.makedirs(RESULT_FOLDER, exist_ok=True)
+
+        # Save with verification
+        if not cv2.imwrite(result_path, enhanced):
+            raise IOError("Failed to write enhanced image to disk")
+
+        # Verify the file was actually created
+        if not os.path.exists(result_path):
+            raise IOError("Enhanced image file not found after saving")
+        if os.path.getsize(result_path) == 0:
+            os.remove(result_path)
+            raise IOError("Enhanced image file is empty")
+
+        # Step 4: Create visualization (90% progress)
+        task['progress'] = 90
+        vis_filename = f"vis_{timestamp}_{secure_filename(filename).replace('.', '_')}.png"
         vis_path = os.path.join(VISUALIZATION_FOLDER, vis_filename)
-        create_visualization(image, enhanced, params, vis_path)
 
-        task['status'] = 'completed'
-        task['progress'] = 100
-        task['result_filename'] = result_filename
-        task['vis_filename'] = vis_filename
+        try:
+            create_visualization(image, enhanced, params, vis_path)
+            if not os.path.exists(vis_path):
+                raise IOError("Visualization file not created")
+        except Exception as e:
+            print(f"Visualization failed (non-critical): {str(e)}")
+            vis_filename = None
 
-        history_id = history_manager.add_entry(filename, result_filename, params)
-        task['history_id'] = history_id
+        # Finalize task only after all operations succeed
+        task.update({
+            'status': 'completed',
+            'progress': 100,
+            'result_filename': result_filename,
+            'vis_filename': vis_filename,
+            'history_id': history_manager.add_entry(filename, result_filename, params)
+        })
 
     except Exception as e:
-        task['status'] = 'failed'
-        task['error'] = str(e)
-
+        task.update({
+            'status': 'failed',
+            'error': str(e),
+            'progress': 100,
+            'result_filename': None
+        })
+        # Clean up any partial files
+        if 'result_filename' in task and task['result_filename']:
+            try:
+                os.remove(os.path.join(RESULT_FOLDER, task['result_filename']))
+            except:
+                pass
 
 def create_visualization(original, enhanced, params, output_path):
     if len(original.shape) > 2:
@@ -181,10 +230,11 @@ def create_visualization(original, enhanced, params, output_path):
 
 
 @app.route('/task/<task_id>', methods=['GET'])
+@app.route('/task/<task_id>', methods=['GET'])
 def get_task_status(task_id):
     task = processing_tasks.get(task_id)
     if not task:
-        return jsonify(success=False, error='Task not found')
+        return jsonify(success=False, error='Task not found'), 404
 
     response = {
         'success': True,
@@ -193,11 +243,31 @@ def get_task_status(task_id):
     }
 
     if task['status'] == 'completed':
-        response['result'] = task['result_filename']
-        response['vis_filename'] = task['vis_filename']
-        response['history_id'] = task['history_id']
+        if not task.get('result_filename'):
+            return jsonify(
+                success=False,
+                error='Internal server error: Task marked complete but no result',
+                status='failed'
+            ), 500
+
+        # Verify the result file exists
+        result_path = os.path.join(RESULT_FOLDER, task['result_filename'])
+        if not os.path.exists(result_path):
+            task['status'] = 'failed'
+            task['error'] = 'Result file missing on server'
+            return jsonify(
+                success=False,
+                error=task['error'],
+                status='failed'
+            ), 500
+
+        response.update({
+            'result_filename': task['result_filename'],
+            'vis_filename': task.get('vis_filename'),
+            'history_id': task.get('history_id')
+        })
     elif task['status'] == 'failed':
-        response['error'] = task['error']
+        response['error'] = task.get('error', 'Unknown error')
 
     return jsonify(response)
 

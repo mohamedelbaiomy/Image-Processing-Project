@@ -1,0 +1,291 @@
+[
+  {
+    "id": "1746590364909",
+    "timestamp": "2025-05-07 06:59:24",
+    "original_filename": "20250507065920_Gaussian.jpeg",
+    "result_filename": "enhanced_20250507065921_20250507065920_Gaussian.jpeg",
+    "descriptive_name": "Butterworth highpass - Cutoff: 15 - Order: 3",
+    "params": {
+      "filter_type": "highpass",
+      "filter_class": "butterworth",
+      "cutoff": 15,
+      "order": 3,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": true,
+      "sharpen_amount": 1.5
+    }
+  },
+  {
+    "id": "1746590392351",
+    "timestamp": "2025-05-07 06:59:52",
+    "original_filename": "20250507065948_Image_2.jpg",
+    "result_filename": "enhanced_20250507065951_20250507065948_Image_2.jpg",
+    "descriptive_name": "Gaussian lowpass - Cutoff: 20",
+    "params": {
+      "filter_type": "lowpass",
+      "filter_class": "gaussian",
+      "cutoff": 20,
+      "order": 2,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1.5
+    }
+  },
+  {
+    "id": "1746590404302",
+    "timestamp": "2025-05-07 07:00:04",
+    "original_filename": "20250507065948_Image_2.jpg",
+    "result_filename": "enhanced_20250507070000_20250507065948_Image_2.jpg",
+    "descriptive_name": "Gaussian highpass - Cutoff: 20",
+    "params": {
+      "filter_type": "highpass",
+      "filter_class": "gaussian",
+      "cutoff": 20,
+      "order": 2,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1.5
+    }
+  },
+  {
+    "id": "1746590642633",
+    "timestamp": "2025-05-07 07:04:02",
+    "original_filename": "20250507070359_Image_2.jpg",
+    "result_filename": "enhanced_20250507070401_20250507070359_Image_2.jpg",
+    "descriptive_name": "Butterworth highpass - Cutoff: 15 - Order: 3",
+    "params": {
+      "filter_type": "highpass",
+      "filter_class": "butterworth",
+      "cutoff": 15,
+      "order": 3,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": true,
+      "sharpen_amount": 1.5
+    }
+  },
+  {
+    "id": "1746590667852",
+    "timestamp": "2025-05-07 07:04:27",
+    "original_filename": "20250507070419_Image_2.jpg",
+    "result_filename": "enhanced_20250507070422_20250507070419_Image_2.jpg",
+    "descriptive_name": "Butterworth lowpass - Cutoff: 30 - Order: 2",
+    "params": {
+      "filter_type": "lowpass",
+      "filter_class": "butterworth",
+      "cutoff": 30,
+      "order": 2,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1
+    }
+  },
+  {
+    "id": "1746591550980",
+    "timestamp": "2025-05-07 07:19:10",
+    "original_filename": "20250507071858_Image_2.jpg",
+    "result_filename": "enhanced_20250507071902_20250507071858_Image_2.jpg",
+    "descriptive_name": "Butterworth highpass - Cutoff: 15 - Order: 3",
+    "params": {
+      "filter_type": "highpass",
+      "filter_class": "butterworth",
+      "cutoff": 15,
+      "order": 3,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": true,
+      "sharpen_amount": 1.5
+    }
+  },
+  {
+    "id": "1746591717343",
+    "timestamp": "2025-05-07 07:21:57",
+    "original_filename": "20250507072051_Image_1.jpg",
+    "result_filename": "enhanced_20250507072148_20250507072051_Image_1.jpg",
+    "descriptive_name": "Butterworth highpass - Cutoff: 30 - Order: 2",
+    "params": {
+      "filter_type": "highpass",
+      "filter_class": "butterworth",
+      "cutoff": 30,
+      "order": 2,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1
+    }
+  },
+  {
+    "id": "1746592168630",
+    "timestamp": "2025-05-07 07:29:28",
+    "original_filename": "20250507072925_Image_2.jpg",
+    "result_filename": "enhanced_20250507072927_20250507072925_Image_2.jpg",
+    "descriptive_name": "Butterworth highpass - Cutoff: 15 - Order: 3",
+    "params": {
+      "filter_type": "highpass",
+      "filter_class": "butterworth",
+      "cutoff": 15,
+      "order": 3,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": true,
+      "sharpen_amount": 1.5
+    }
+  },
+  {
+    "id": "1746592322866",
+    "timestamp": "2025-05-07 07:32:02",
+    "original_filename": "20250507073154_Image_2.jpg",
+    "result_filename": "enhanced_20250507073159_20250507073154_Image_2.jpg",
+    "descriptive_name": "Gaussian lowpass - Cutoff: 20",
+    "params": {
+      "filter_type": "lowpass",
+      "filter_class": "gaussian",
+      "cutoff": 20,
+      "order": 2,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1
+    }
+  },
+  {
+    "id": "1746592402121",
+    "timestamp": "2025-05-07 07:33:22",
+    "original_filename": "20250507073154_Image_2.jpg",
+    "result_filename": "enhanced_20250507073321_20250507073154_Image_2.jpg",
+    "descriptive_name": "Gaussian lowpass - Cutoff: 20",
+    "params": {
+      "filter_type": "lowpass",
+      "filter_class": "gaussian",
+      "cutoff": 20,
+      "order": 2,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1
+    }
+  },
+  {
+    "id": "1746592445796",
+    "timestamp": "2025-05-07 07:34:05",
+    "original_filename": "20250507073347_Image_1.jpg",
+    "result_filename": "enhanced_20250507073357_20250507073347_Image_1.jpg",
+    "descriptive_name": "Butterworth bandpass - Cutoff: 30 - Order: 2 - BW: 15",
+    "params": {
+      "filter_type": "bandpass",
+      "filter_class": "butterworth",
+      "cutoff": 30,
+      "order": 2,
+      "band_width": 15,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1
+    }
+  },
+  {
+    "id": "1746593099990",
+    "timestamp": "2025-05-07 07:44:59",
+    "original_filename": "20250507074453_Image_2.jpg",
+    "result_filename": "enhanced_20250507074456_20250507074453_Image_2.jpg",
+    "descriptive_name": "Butterworth bandpass - Cutoff: 30 - Order: 2 - BW: 15",
+    "params": {
+      "filter_type": "bandpass",
+      "filter_class": "butterworth",
+      "cutoff": 30,
+      "order": 2,
+      "band_width": 15,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1
+    }
+  },
+  {
+    "id": "1746593295271",
+    "timestamp": "2025-05-07 07:48:15",
+    "original_filename": "20250507074801_Image_2.jpg",
+    "result_filename": "enhanced_20250507074809_20250507074801_Image_2.jpg",
+    "descriptive_name": "Gaussian lowpass - Cutoff: 20",
+    "params": {
+      "filter_type": "lowpass",
+      "filter_class": "gaussian",
+      "cutoff": 20,
+      "order": 2,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1
+    }
+  },
+  {
+    "id": "1746593311397",
+    "timestamp": "2025-05-07 07:48:31",
+    "original_filename": "20250507074801_Image_2.jpg",
+    "result_filename": "enhanced_20250507074828_20250507074801_Image_2.jpg",
+    "descriptive_name": "Butterworth bandpass - Cutoff: 30 - Order: 2 - BW: 15",
+    "params": {
+      "filter_type": "bandpass",
+      "filter_class": "butterworth",
+      "cutoff": 30,
+      "order": 2,
+      "band_width": 15,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1
+    }
+  },
+  {
+    "id": "1746593434133",
+    "timestamp": "2025-05-07 07:50:34",
+    "original_filename": "20250507075026_Image_2.jpg",
+    "result_filename": "enhanced_20250507075030_20250507075026_Image_2.jpg",
+    "descriptive_name": "Gaussian lowpass - Cutoff: 20",
+    "params": {
+      "filter_type": "lowpass",
+      "filter_class": "gaussian",
+      "cutoff": 20,
+      "order": 2,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1
+    }
+  },
+  {
+    "id": "1746593642154",
+    "timestamp": "2025-05-07 07:54:02",
+    "original_filename": "20250507075342_Image_1.jpg",
+    "result_filename": "enhanced_20250507075354_20250507075342_Image_1.jpg",
+    "descriptive_name": "Gaussian lowpass - Cutoff: 20",
+    "params": {
+      "filter_type": "lowpass",
+      "filter_class": "gaussian",
+      "cutoff": 20,
+      "order": 2,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": false,
+      "sharpen_amount": 1
+    }
+  },
+  {
+    "id": "1746593751632",
+    "timestamp": "2025-05-07 07:55:51",
+    "original_filename": "20250507075544_Image_2.jpg",
+    "result_filename": "enhanced_20250507075548_20250507075544_Image_2.jpg",
+    "descriptive_name": "Butterworth highpass - Cutoff: 15 - Order: 3",
+    "params": {
+      "filter_type": "highpass",
+      "filter_class": "butterworth",
+      "cutoff": 15,
+      "order": 3,
+      "band_width": 10,
+      "normalize": true,
+      "sharpen": true,
+      "sharpen_amount": 1.5
+    }
+  }
+]

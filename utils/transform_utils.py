@@ -39,6 +39,19 @@ class FourierTransformer:
         pass
 
     @staticmethod
+    def compute_fft(image):
+        """
+        Compute the 2D Fourier Transform of an image.
+
+        Args:
+            image: Input image (grayscale)
+
+        Returns:
+            Tuple of (magnitude_spectrum, phase_spectrum, fft_shifted)
+        """
+        return compute_fft(image)
+
+    @staticmethod
     def compute_ifft(fft_shifted):
         """
         Compute inverse Fourier Transform.
@@ -48,8 +61,6 @@ class FourierTransformer:
 
         Returns:
             Reconstructed image
-            :param fft_shifted:
-            :return:
         """
         # Unshift the frequencies
         fft_unshifted = np.fft.ifftshift(fft_shifted)

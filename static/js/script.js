@@ -127,128 +127,242 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function handleUpload(event) {
-        event.preventDefault();
-        
-        if (!imageInput.files || imageInput.files.length === 0) {
-            showError('Please select an image to upload.');
-            return;
-        }
+    // Fix for the file upload handling
+function handleUpload(event) {
+    event.preventDefault();
 
-        showLoading('Uploading image...');
-
-        const formData = new FormData();
-        formData.append('image', imageInput.files[0]);
-
-        fetch('/upload', {
-            method: 'POST',
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                currentFilename = data.filename;
-                originalImage.src = `/static/uploads/${currentFilename}`;
-                showSuccess('Image uploaded successfully');
-            } else {
-                showError(data.error || 'Error uploading image');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showError('Error uploading image');
-        })
-        .finally(() => {
-            hideLoading();
-        });
+    if (!imageInput.files || imageInput.files.length === 0) {
+        showError('Please select an image to upload.');
+        return;
     }
 
-    function applyEnhancement() {
-        if (!currentFilename) {
-            showError('Please upload an image first.');
-            return;
+    const file = imageInput.files[0];
+    // Check file type
+    if (!file.type.match('image.*')) {
+        showError('Please select a valid image file.');
+        return;
+    }
+
+    // Check file size (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+        showError('File is too large. Maximum size is 10MB.');
+        return;
+    }
+
+    showLoading('Uploading image...');
+
+    // Reset existing images
+    if (enhancedImage.src) {
+        enhancedImage.src = '/static/img/placeholder.jpg';
+    }
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    fetch('/upload', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
         }
-
-        showLoading('Applying enhancement...');
-        applyBtn.disabled = true;
-
-        const params = getCurrentParams();
-
-        fetch('/enhance', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                filename: currentFilename,
-                params: params
-            })
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                if (data.task_id) {
-                    currentTaskId = data.task_id;
-                    pollTaskStatus(data.task_id);
-                } else {
-                    updateEnhancedImage(data.result_filename);
-                    showSuccess('Enhancement completed');
-                }
-            } else {
-                showError(data.error || 'Error enhancing image');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            showError('Error enhancing image');
-        })
-        .finally(() => {
+        return response.json();
+    })
+    .then(data => {
+        console.log('Upload response:', data);
+        if (data.success && data.filename) {
+            currentFilename = data.filename;
+            originalImage.src = `/static/uploads/${currentFilename}?t=${new Date().getTime()}`;
+            showSuccess('Image uploaded successfully');
             applyBtn.disabled = false;
-        });
+            generateVisBtn.disabled = false;
+        } else {
+            throw new Error(data.error || 'Error uploading image: No filename returned');
+        }
+    })
+    .catch(error => {
+        console.error('Upload error:', error);
+        showError(`Error uploading image: ${error.message}`);
+    })
+    .finally(() => {
+        hideLoading();
+    });
+}
+
+    // Fix for the applyEnhancement function
+    function applyEnhancement() {
+    if (!currentFilename) {
+        showError('Please upload an image first.');
+        return;
     }
 
-    function pollTaskStatus(taskId) {
-        const checkStatus = () => {
-            fetch(`/task/${taskId}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        updateProgress(data.progress);
+    showLoading('Applying enhancement...');
+    applyBtn.disabled = true;
+    downloadBtn.disabled = true; // Disable download until enhancement is complete
 
-                        if (data.status === 'completed') {
-                            updateEnhancedImage(data.result_filename);
-                            addToHistory(data.history_id);
-                            showSuccess('Enhancement completed');
-                            clearInterval(statusInterval);
-                            hideLoading();
-                        } else if (data.status === 'failed') {
-                            showError(data.error || 'Enhancement failed');
-                            clearInterval(statusInterval);
-                            hideLoading();
-                        }
-                    } else {
-                        showError(data.error || 'Error checking status');
-                        clearInterval(statusInterval);
-                        hideLoading();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    showError('Error checking status');
-                    clearInterval(statusInterval);
-                    hideLoading();
-                });
-        };
+    const params = getCurrentParams();
+    console.log('Enhancement parameters:', params);
+    console.log('Current filename:', currentFilename);
 
-        const statusInterval = setInterval(checkStatus, 1000);
-        checkStatus(); // Initial check
+    fetch('/enhance', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            filename: currentFilename,
+            params: params
+        })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`Server responded with status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Enhancement response:', data);
+        if (data.success) {
+            if (data.task_id) {
+                currentTaskId = data.task_id;
+                pollTaskStatus(data.task_id);
+            } else if (data.result_filename) {
+                updateEnhancedImage(data.result_filename);
+                showSuccess('Enhancement completed');
+                hideLoading();
+            } else {
+                throw new Error('No result filename or task ID in response');
+            }
+        } else {
+            throw new Error(data.error || 'Error enhancing image');
+        }
+    })
+    .catch(error => {
+        console.error('Enhancement error:', error);
+        showError(`Error enhancing image: ${error.message}`);
+        hideLoading();
+    })
+    .finally(() => {
+        applyBtn.disabled = false;
+    });
+}
+
+// Fix for pollTaskStatus function
+async function pollTaskStatus(taskId) {
+    if (!taskId) {
+        showError('Invalid task ID');
+        hideLoading();
+        return;
     }
 
-    function updateEnhancedImage(filename) {
-        const timestamp = new Date().getTime();
-        enhancedImage.src = `/static/results/${filename}?t=${timestamp}`;
-        downloadBtn.href = `/static/results/${filename}`;
-        downloadBtn.download = `enhanced_${currentFilename}`;
+    const MAX_ATTEMPTS = 90; // 1.5 minutes max
+    const RETRY_DELAY = 1000; // 1 second
+    let attempts = 0;
+
+    const checkStatus = async () => {
+        attempts++;
+
+        try {
+            const response = await fetch(`/task/${taskId}`);
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const data = await response.json();
+
+            if (!data.success) {
+                throw new Error(data.error || 'Task processing failed');
+            }
+
+            updateProgress(data.progress || 0);
+
+            // Handle completion
+            if (data.status === 'completed') {
+                if (!data.result_filename) {
+                    throw new Error('Server completed but provided no result');
+                }
+
+                // Verify the image exists with retries
+                const imageUrl = `/static/results/${data.result_filename}`;
+                const exists = await verifyImageExists(imageUrl, 3); // 3 retries
+
+                if (exists) {
+                    updateEnhancedImage(data.result_filename);
+                    if (data.history_id) addToHistory(data.history_id);
+                    showSuccess('Enhancement completed successfully!');
+                } else {
+                    throw new Error('Result image could not be loaded');
+                }
+                return true; // Done
+            }
+            else if (data.status === 'failed') {
+                throw new Error(data.error || 'Enhancement failed');
+            }
+
+            // Continue polling
+            if (attempts < MAX_ATTEMPTS) {
+                setTimeout(checkStatus, RETRY_DELAY);
+            } else {
+                throw new Error('Processing timeout. Server took too long to respond.');
+            }
+        } catch (error) {
+            hideLoading();
+            showError(`Error: ${error.message}`);
+            console.error('Task polling error:', error);
+            return false; // Failed
+        }
+    };
+
+    await checkStatus();
+}
+
+// Enhanced image verification with retries
+function verifyImageExists(url, maxRetries = 3) {
+    return new Promise((resolve) => {
+        let retries = 0;
+
+        function check() {
+            const img = new Image();
+            img.onload = () => resolve(true);
+            img.onerror = () => {
+                if (retries++ < maxRetries) {
+                    setTimeout(check, 1000 * retries);
+                } else {
+                    resolve(false);
+                }
+            };
+            img.src = url;
+        }
+
+        check();
+    });
+}
+
+ // Fix for the updateEnhancedImage function
+function updateEnhancedImage(filename) {
+    if (!filename) {
+        console.error('No filename provided for enhanced image');
+        showError('Error loading enhanced image: No filename received from server');
+        return;
+    }
+
+    const timestamp = new Date().getTime();
+    console.log(`Loading enhanced image: /static/results/${filename}?t=${timestamp}`);
+
+    // Make sure the filename is valid
+    enhancedImage.onerror = function() {
+        console.error(`Failed to load enhanced image: ${filename}`);
+        showError('Enhanced image could not be loaded. Please try again or check server logs.');
+        enhancedImage.src = '/static/img/placeholder.jpg'; // Fallback image
+    };
+
+    enhancedImage.onload = function() {
+        console.log('Enhanced image loaded successfully');
+        downloadBtn.disabled = false;
+    };
+
+    enhancedImage.src = `/static/results/${filename}?t=${timestamp}`;
+    downloadBtn.href = `/static/results/${filename}`;
+    downloadBtn.download = `enhanced_${currentFilename || 'image'}`;
     }
 
     function downloadEnhancedImage() {
